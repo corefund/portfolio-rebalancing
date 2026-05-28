@@ -1,389 +1,256 @@
 """
-One-time data preparation for autoresearch experiments.
-Downloads data shards and trains a BPE tokenizer.
-
-Usage:
-    python prepare.py                  # full prep (download + tokenizer)
-    python prepare.py --num-shards 8   # download only 8 shards (for testing)
-
-Data and tokenizer are stored in ~/.cache/autoresearch/.
+Locked evaluation harness - DO NOT MODIFY
+Contains benchmark config, data loading, and fitness function.
 """
 
+import numpy as np
+import pandas as pd
+import yfinance as yf
 import os
-import sys
-import time
-import math
-import argparse
-import pickle
-from multiprocessing import Pool
-
-import requests
-import pyarrow.parquet as pq
-import rustbpe
-import tiktoken
-import torch
+import urllib.request
+from datetime import datetime, timedelta
 
 # ---------------------------------------------------------------------------
-# Constants (fixed, do not modify)
+# Universe Loading
 # ---------------------------------------------------------------------------
 
-MAX_SEQ_LEN = 2048       # context length
-TIME_BUDGET = 300        # training time budget in seconds (5 minutes)
-EVAL_TOKENS = 40 * 524288  # number of tokens for val eval
+def load_universe():
+    """
+    Load asset universe from CSV source.
 
-# ---------------------------------------------------------------------------
-# Configuration
-# ---------------------------------------------------------------------------
+    Priority:
+    1. Local universe.csv if exists
+    2. Download from UNIVERSE_URL env var if set
+    3. Fall back to default universe
+    """
+    # Check for local universe.csv
+    if os.path.exists('universe.csv'):
+        df = pd.read_csv('universe.csv')
+        if 'ticker' in df.columns:
+            return df['ticker'].dropna().tolist()
+        elif 'symbol' in df.columns:
+            return df['symbol'].dropna().tolist()
+        else:
+            # Assume first column is tickers
+            return df.iloc[:, 0].dropna().tolist()
 
-CACHE_DIR = os.path.join(os.path.expanduser("~"), ".cache", "autoresearch")
-DATA_DIR = os.path.join(CACHE_DIR, "data")
-TOKENIZER_DIR = os.path.join(CACHE_DIR, "tokenizer")
-BASE_URL = "https://huggingface.co/datasets/karpathy/climbmix-400b-shuffle/resolve/main"
-MAX_SHARD = 6542 # the last datashard is shard_06542.parquet
-VAL_SHARD = MAX_SHARD  # pinned validation shard (shard_06542)
-VAL_FILENAME = f"shard_{VAL_SHARD:05d}.parquet"
-VOCAB_SIZE = 8192
-
-# BPE split pattern (GPT-4 style, with \p{N}{1,2} instead of {1,3})
-SPLIT_PATTERN = r"""'(?i:[sdmt]|ll|ve|re)|[^\r\n\p{L}\p{N}]?+\p{L}+|\p{N}{1,2}| ?[^\s\p{L}\p{N}]++[\r\n]*|\s*[\r\n]|\s+(?!\S)|\s+"""
-
-SPECIAL_TOKENS = [f"<|reserved_{i}|>" for i in range(4)]
-BOS_TOKEN = "<|reserved_0|>"
-
-# ---------------------------------------------------------------------------
-# Data download
-# ---------------------------------------------------------------------------
-
-def download_single_shard(index):
-    """Download one parquet shard with retries. Returns True on success."""
-    filename = f"shard_{index:05d}.parquet"
-    filepath = os.path.join(DATA_DIR, filename)
-    if os.path.exists(filepath):
-        return True
-
-    url = f"{BASE_URL}/{filename}"
-    max_attempts = 5
-    for attempt in range(1, max_attempts + 1):
+    # Try to download from URL
+    universe_url = os.getenv('UNIVERSE_URL')
+    if universe_url:
         try:
-            response = requests.get(url, stream=True, timeout=30)
-            response.raise_for_status()
-            temp_path = filepath + ".tmp"
-            with open(temp_path, "wb") as f:
-                for chunk in response.iter_content(chunk_size=1024 * 1024):
-                    if chunk:
-                        f.write(chunk)
-            os.rename(temp_path, filepath)
-            print(f"  Downloaded {filename}")
-            return True
-        except (requests.RequestException, IOError) as e:
-            print(f"  Attempt {attempt}/{max_attempts} failed for {filename}: {e}")
-            for path in [filepath + ".tmp", filepath]:
-                if os.path.exists(path):
-                    try:
-                        os.remove(path)
-                    except OSError:
-                        pass
-            if attempt < max_attempts:
-                time.sleep(2 ** attempt)
-    return False
+            urllib.request.urlretrieve(universe_url, 'universe_temp.csv')
+            df = pd.read_csv('universe_temp.csv')
 
+            # Check if this is a returns CSV (has 'date' columns and ticker columns)
+            # Extract tickers from column names, excluding 'date' and empty columns
+            if 'date' in df.columns or any('date' in str(col).lower() for col in df.columns):
+                tickers = [col for col in df.columns
+                          if col and 'date' not in str(col).lower()
+                          and not str(col).startswith('Unnamed')
+                          and not any(x in str(col) for x in ['Algotoria', 'Quantum', 'Basket', 'BTC', 'USDT'])]
+                if tickers:
+                    os.remove('universe_temp.csv')
+                    # Filter to only valid ticker symbols (uppercase, 2-5 chars)
+                    valid_tickers = [t for t in tickers if t.isupper() and 2 <= len(t) <= 5]
+                    return sorted(set(valid_tickers))
 
-def download_data(num_shards, download_workers=8):
-    """Download training shards + pinned validation shard."""
-    os.makedirs(DATA_DIR, exist_ok=True)
-    num_train = min(num_shards, MAX_SHARD)
-    ids = list(range(num_train))
-    if VAL_SHARD not in ids:
-        ids.append(VAL_SHARD)
+            # Otherwise treat as ticker list
+            if 'ticker' in df.columns:
+                tickers = df['ticker'].dropna().tolist()
+            elif 'symbol' in df.columns:
+                tickers = df['symbol'].dropna().tolist()
+            else:
+                tickers = df.iloc[:, 0].dropna().tolist()
 
-    # Count what's already downloaded
-    existing = sum(1 for i in ids if os.path.exists(os.path.join(DATA_DIR, f"shard_{i:05d}.parquet")))
-    if existing == len(ids):
-        print(f"Data: all {len(ids)} shards already downloaded at {DATA_DIR}")
-        return
+            os.remove('universe_temp.csv')
+            return tickers
+        except Exception as e:
+            print(f"Warning: Failed to download universe from {universe_url}: {e}")
+            print("Falling back to default universe")
 
-    needed = len(ids) - existing
-    print(f"Data: downloading {needed} shards ({existing} already exist)...")
-
-    workers = max(1, min(download_workers, needed))
-    with Pool(processes=workers) as pool:
-        results = pool.map(download_single_shard, ids)
-
-    ok = sum(1 for r in results if r)
-    print(f"Data: {ok}/{len(ids)} shards ready at {DATA_DIR}")
+    # Default universe
+    return ['SPY', 'TLT', 'GLD', 'VNQ', 'DBC', 'VEA', 'VWO', 'AGG']
 
 # ---------------------------------------------------------------------------
-# Tokenizer training
+# Benchmark Configuration (LOCKED)
 # ---------------------------------------------------------------------------
 
-def list_parquet_files():
-    """Return sorted list of parquet file paths in the data directory."""
-    files = sorted(f for f in os.listdir(DATA_DIR) if f.endswith(".parquet") and not f.endswith(".tmp"))
-    return [os.path.join(DATA_DIR, f) for f in files]
+BENCHMARK_CONFIG = {
+    'universe': load_universe(),
+    'train_start': '2010-01-01',
+    'train_end': '2018-12-31',
+    'val_start': '2019-01-01',
+    'val_end': '2021-12-31',
+    'test_start': '2022-01-01',
+    'test_end': '2024-12-31',
+    'starting_capital': 100000,
+    'transaction_cost_bps': 5,
+}
 
+# ---------------------------------------------------------------------------
+# Data Loading
+# ---------------------------------------------------------------------------
 
-def text_iterator(max_chars=1_000_000_000, doc_cap=10_000):
-    """Yield documents from training split (all shards except pinned val shard)."""
-    parquet_paths = [p for p in list_parquet_files() if not p.endswith(VAL_FILENAME)]
-    nchars = 0
-    for filepath in parquet_paths:
-        pf = pq.ParquetFile(filepath)
-        for rg_idx in range(pf.num_row_groups):
-            rg = pf.read_row_group(rg_idx)
-            for text in rg.column("text").to_pylist():
-                doc = text[:doc_cap] if len(text) > doc_cap else text
-                nchars += len(doc)
-                yield doc
-                if nchars >= max_chars:
-                    return
+def fetch_prices(tickers, start_date, end_date):
+    """Fetch historical prices from yfinance."""
+    data = yf.download(tickers, start=start_date, end=end_date, progress=False)
 
+    if len(tickers) == 1:
+        # Single ticker returns simple DataFrame
+        if 'Close' in data.columns:
+            prices = data['Close'].to_frame()
+        else:
+            prices = data
+        prices.columns = tickers
+    else:
+        # Multiple tickers return MultiIndex DataFrame
+        if isinstance(data.columns, pd.MultiIndex):
+            # Extract 'Close' prices for all tickers
+            prices = data['Close']
+        else:
+            prices = data
 
-def train_tokenizer():
-    """Train BPE tokenizer using rustbpe, save as tiktoken pickle."""
-    tokenizer_pkl = os.path.join(TOKENIZER_DIR, "tokenizer.pkl")
-    token_bytes_path = os.path.join(TOKENIZER_DIR, "token_bytes.pt")
+    return prices.ffill().dropna()
 
-    if os.path.exists(tokenizer_pkl) and os.path.exists(token_bytes_path):
-        print(f"Tokenizer: already trained at {TOKENIZER_DIR}")
-        return
+# ---------------------------------------------------------------------------
+# Fitness Function (LOCKED)
+# ---------------------------------------------------------------------------
 
-    os.makedirs(TOKENIZER_DIR, exist_ok=True)
+def evaluate_portfolio(weights_history, returns, turnover):
+    """
+    Compute fitness metrics for a portfolio.
 
-    parquet_files = list_parquet_files()
-    if len(parquet_files) < 2:
-        print("Tokenizer: need at least 2 data shards (1 train + 1 val). Download more data first.")
-        sys.exit(1)
+    Args:
+        weights_history: [T, n_assets] array of portfolio weights over time
+        returns: [T, n_assets] array of asset returns
+        turnover: float, average turnover per rebalance
 
-    # --- Train with rustbpe ---
-    print("Tokenizer: training BPE tokenizer...")
-    t0 = time.time()
+    Returns:
+        dict with metrics and composite score
+    """
+    # Portfolio returns
+    portfolio_returns = (weights_history[:-1] * returns[1:]).sum(axis=1)
 
-    tokenizer = rustbpe.Tokenizer()
-    vocab_size_no_special = VOCAB_SIZE - len(SPECIAL_TOKENS)
-    tokenizer.train_from_iterator(text_iterator(), vocab_size_no_special, pattern=SPLIT_PATTERN)
+    # Cumulative return
+    cum_returns = (1 + portfolio_returns).cumprod()
+    total_return = cum_returns[-1] - 1
 
-    # Build tiktoken encoding from trained merges
-    pattern = tokenizer.get_pattern()
-    mergeable_ranks = {bytes(k): v for k, v in tokenizer.get_mergeable_ranks()}
-    tokens_offset = len(mergeable_ranks)
-    special_tokens = {name: tokens_offset + i for i, name in enumerate(SPECIAL_TOKENS)}
-    enc = tiktoken.Encoding(
-        name="rustbpe",
-        pat_str=pattern,
-        mergeable_ranks=mergeable_ranks,
-        special_tokens=special_tokens,
+    # CAGR
+    n_years = len(portfolio_returns) / 252
+    cagr = (1 + total_return) ** (1 / n_years) - 1
+
+    # Volatility (annualized)
+    volatility = portfolio_returns.std() * np.sqrt(252)
+
+    # Sharpe ratio (assume 0% risk-free rate)
+    sharpe = (portfolio_returns.mean() * 252) / (volatility + 1e-8)
+
+    # Sortino ratio (downside deviation)
+    downside_returns = portfolio_returns[portfolio_returns < 0]
+    downside_std = downside_returns.std() * np.sqrt(252) if len(downside_returns) > 0 else volatility
+    sortino = (portfolio_returns.mean() * 252) / (downside_std + 1e-8)
+
+    # Max drawdown
+    cum_max = np.maximum.accumulate(cum_returns)
+    drawdowns = (cum_returns - cum_max) / cum_max
+    max_drawdown = drawdowns.min()
+
+    # Risk parity loss (deviation from equal risk contribution)
+    avg_weights = weights_history.mean(axis=0)
+    asset_vols = returns.std(axis=0) * np.sqrt(252)
+    risk_contributions = avg_weights * asset_vols
+    risk_contributions = risk_contributions / (risk_contributions.sum() + 1e-8)
+    target_risk = 1.0 / len(avg_weights)
+    rp_loss = ((risk_contributions - target_risk) ** 2).sum()
+
+    # Composite score (LOCKED FORMULA)
+    composite_score = (
+        0.30 * sharpe +
+        0.20 * sortino +
+        0.15 * cagr -
+        0.15 * abs(max_drawdown) -
+        0.10 * volatility -
+        0.05 * turnover -
+        0.05 * rp_loss
     )
 
-    # Save tokenizer
-    with open(tokenizer_pkl, "wb") as f:
-        pickle.dump(enc, f)
-
-    t1 = time.time()
-    print(f"Tokenizer: trained in {t1 - t0:.1f}s, saved to {tokenizer_pkl}")
-
-    # --- Build token_bytes lookup for BPB evaluation ---
-    print("Tokenizer: building token_bytes lookup...")
-    special_set = set(SPECIAL_TOKENS)
-    token_bytes_list = []
-    for token_id in range(enc.n_vocab):
-        token_str = enc.decode([token_id])
-        if token_str in special_set:
-            token_bytes_list.append(0)
-        else:
-            token_bytes_list.append(len(token_str.encode("utf-8")))
-    token_bytes_tensor = torch.tensor(token_bytes_list, dtype=torch.int32)
-    torch.save(token_bytes_tensor, token_bytes_path)
-    print(f"Tokenizer: saved token_bytes to {token_bytes_path}")
-
-    # Sanity check
-    test = "Hello world! Numbers: 123. Unicode: 你好"
-    encoded = enc.encode_ordinary(test)
-    decoded = enc.decode(encoded)
-    assert decoded == test, f"Tokenizer roundtrip failed: {test!r} -> {decoded!r}"
-    print(f"Tokenizer: sanity check passed (vocab_size={enc.n_vocab})")
+    return {
+        'composite_score': composite_score,
+        'sharpe': sharpe,
+        'sortino': sortino,
+        'cagr': cagr,
+        'max_drawdown': max_drawdown,
+        'volatility': volatility,
+        'turnover': turnover,
+        'rp_loss': rp_loss,
+        'total_return': total_return,
+    }
 
 # ---------------------------------------------------------------------------
-# Runtime utilities (imported by train.py)
+# Backtest Runner (LOCKED)
 # ---------------------------------------------------------------------------
 
-class Tokenizer:
-    """Minimal tokenizer wrapper. Training is handled above."""
-
-    def __init__(self, enc):
-        self.enc = enc
-        self.bos_token_id = enc.encode_single_token(BOS_TOKEN)
-
-    @classmethod
-    def from_directory(cls, tokenizer_dir=TOKENIZER_DIR):
-        with open(os.path.join(tokenizer_dir, "tokenizer.pkl"), "rb") as f:
-            enc = pickle.load(f)
-        return cls(enc)
-
-    def get_vocab_size(self):
-        return self.enc.n_vocab
-
-    def get_bos_token_id(self):
-        return self.bos_token_id
-
-    def encode(self, text, prepend=None, num_threads=8):
-        if prepend is not None:
-            prepend_id = prepend if isinstance(prepend, int) else self.enc.encode_single_token(prepend)
-        if isinstance(text, str):
-            ids = self.enc.encode_ordinary(text)
-            if prepend is not None:
-                ids.insert(0, prepend_id)
-        elif isinstance(text, list):
-            ids = self.enc.encode_ordinary_batch(text, num_threads=num_threads)
-            if prepend is not None:
-                for row in ids:
-                    row.insert(0, prepend_id)
-        else:
-            raise ValueError(f"Invalid input type: {type(text)}")
-        return ids
-
-    def decode(self, ids):
-        return self.enc.decode(ids)
-
-
-def get_token_bytes(device="cpu"):
-    path = os.path.join(TOKENIZER_DIR, "token_bytes.pt")
-    with open(path, "rb") as f:
-        return torch.load(f, map_location=device)
-
-
-def _document_batches(split, tokenizer_batch_size=128):
-    """Infinite iterator over document batches from parquet files."""
-    parquet_paths = list_parquet_files()
-    assert len(parquet_paths) > 0, "No parquet files found. Run prepare.py first."
-    val_path = os.path.join(DATA_DIR, VAL_FILENAME)
-    if split == "train":
-        parquet_paths = [p for p in parquet_paths if p != val_path]
-        assert len(parquet_paths) > 0, "No training shards found."
-    else:
-        parquet_paths = [val_path]
-    epoch = 1
-    while True:
-        for filepath in parquet_paths:
-            pf = pq.ParquetFile(filepath)
-            for rg_idx in range(pf.num_row_groups):
-                rg = pf.read_row_group(rg_idx)
-                batch = rg.column('text').to_pylist()
-                for i in range(0, len(batch), tokenizer_batch_size):
-                    yield batch[i:i+tokenizer_batch_size], epoch
-        epoch += 1
-
-
-def make_dataloader(tokenizer, B, T, split, buffer_size=1000):
+def run_backtest(chromosome, split='val'):
     """
-    BOS-aligned dataloader with best-fit packing.
-    Every row starts with BOS. Documents packed using best-fit to minimize cropping.
-    When no document fits remaining space, crops shortest doc to fill exactly.
-    100% utilization (no padding).
+    Run backtest on specified split (train/val/test).
+    This is the locked evaluation harness.
     """
-    assert split in ["train", "val"]
-    row_capacity = T + 1
-    batches = _document_batches(split)
-    bos_token = tokenizer.get_bos_token_id()
-    doc_buffer = []
-    epoch = 1
+    config = BENCHMARK_CONFIG
 
-    def refill_buffer():
-        nonlocal epoch
-        doc_batch, epoch = next(batches)
-        token_lists = tokenizer.encode(doc_batch, prepend=bos_token)
-        doc_buffer.extend(token_lists)
+    # Select date range
+    if split == 'train':
+        start, end = config['train_start'], config['train_end']
+    elif split == 'val':
+        start, end = config['val_start'], config['val_end']
+    else:  # test
+        start, end = config['test_start'], config['test_end']
 
-    # Pre-allocate buffers: [inputs (B*T) | targets (B*T)]
-    row_buffer = torch.empty((B, row_capacity), dtype=torch.long)
-    cpu_buffer = torch.empty(2 * B * T, dtype=torch.long, pin_memory=True)
-    gpu_buffer = torch.empty(2 * B * T, dtype=torch.long, device="cuda")
-    cpu_inputs = cpu_buffer[:B * T].view(B, T)
-    cpu_targets = cpu_buffer[B * T:].view(B, T)
-    inputs = gpu_buffer[:B * T].view(B, T)
-    targets = gpu_buffer[B * T:].view(B, T)
+    # Fetch price data
+    prices = fetch_prices(config['universe'], start, end)
+    returns = prices.pct_change().fillna(0).values
 
-    while True:
-        for row_idx in range(B):
-            pos = 0
-            while pos < row_capacity:
-                while len(doc_buffer) < buffer_size:
-                    refill_buffer()
+    # Initialize portfolio
+    T = len(prices)
+    n_assets = len(config['universe'])
+    weights_history = np.zeros((T, n_assets))
+    portfolio_value = config['starting_capital']
 
-                remaining = row_capacity - pos
+    # Get target weights from chromosome
+    target_weights = chromosome.decode_weights()
+    current_weights = target_weights.copy()
+    weights_history[0] = current_weights
 
-                # Find largest doc that fits entirely
-                best_idx = -1
-                best_len = 0
-                for i, doc in enumerate(doc_buffer):
-                    doc_len = len(doc)
-                    if doc_len <= remaining and doc_len > best_len:
-                        best_idx = i
-                        best_len = doc_len
+    # Track turnover
+    total_turnover = 0
+    n_rebalances = 0
 
-                if best_idx >= 0:
-                    doc = doc_buffer.pop(best_idx)
-                    row_buffer[row_idx, pos:pos + len(doc)] = torch.tensor(doc, dtype=torch.long)
-                    pos += len(doc)
-                else:
-                    # No doc fits — crop shortest to fill remaining
-                    shortest_idx = min(range(len(doc_buffer)), key=lambda i: len(doc_buffer[i]))
-                    doc = doc_buffer.pop(shortest_idx)
-                    row_buffer[row_idx, pos:pos + remaining] = torch.tensor(doc[:remaining], dtype=torch.long)
-                    pos += remaining
+    # Simulate portfolio
+    for t in range(1, T):
+        # Update weights due to price changes (drift)
+        current_weights = current_weights * (1 + returns[t])
+        current_weights = current_weights / (current_weights.sum() + 1e-8)
 
-        cpu_inputs.copy_(row_buffer[:, :-1])
-        cpu_targets.copy_(row_buffer[:, 1:])
-        gpu_buffer.copy_(cpu_buffer, non_blocking=True)
-        yield inputs, targets, epoch
+        # Check if rebalance needed
+        from strategy import should_rebalance
+        if should_rebalance(current_weights, target_weights, chromosome.rebalance_threshold):
+            # Compute turnover (sum of absolute weight changes)
+            turnover = np.abs(current_weights - target_weights).sum()
+            total_turnover += turnover
+            n_rebalances += 1
 
-# ---------------------------------------------------------------------------
-# Evaluation (DO NOT CHANGE — this is the fixed metric)
-# ---------------------------------------------------------------------------
+            # Apply transaction costs
+            cost = turnover * config['transaction_cost_bps'] / 10000
+            portfolio_value *= (1 - cost)
 
-@torch.no_grad()
-def evaluate_bpb(model, tokenizer, batch_size):
-    """
-    Bits per byte (BPB): vocab size-independent evaluation metric.
-    Sums per-token cross-entropy (in nats), sums target byte lengths,
-    then converts nats/byte to bits/byte. Special tokens (byte length 0)
-    are excluded from both sums.
-    Uses fixed MAX_SEQ_LEN so results are comparable across configs.
-    """
-    token_bytes = get_token_bytes(device="cuda")
-    val_loader = make_dataloader(tokenizer, batch_size, MAX_SEQ_LEN, "val")
-    steps = EVAL_TOKENS // (batch_size * MAX_SEQ_LEN)
-    total_nats = 0.0
-    total_bytes = 0
-    for _ in range(steps):
-        x, y, _ = next(val_loader)
-        loss_flat = model(x, y, reduction='none').view(-1)
-        y_flat = y.view(-1)
-        nbytes = token_bytes[y_flat]
-        mask = nbytes > 0
-        total_nats += (loss_flat * mask).sum().item()
-        total_bytes += nbytes.sum().item()
-    return total_nats / (math.log(2) * total_bytes)
+            # Rebalance to target
+            current_weights = target_weights.copy()
 
-# ---------------------------------------------------------------------------
-# Main
-# ---------------------------------------------------------------------------
+        weights_history[t] = current_weights
 
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Prepare data and tokenizer for autoresearch")
-    parser.add_argument("--num-shards", type=int, default=10, help="Number of training shards to download (-1 = all). Val shard is always pinned.")
-    parser.add_argument("--download-workers", type=int, default=8, help="Number of parallel download workers")
-    args = parser.parse_args()
+    # Compute average turnover per rebalance
+    avg_turnover = total_turnover / max(n_rebalances, 1)
 
-    num_shards = MAX_SHARD if args.num_shards == -1 else args.num_shards
+    # Evaluate fitness
+    metrics = evaluate_portfolio(weights_history, returns, avg_turnover)
 
-    print(f"Cache directory: {CACHE_DIR}")
-    print()
-
-    # Step 1: Download data
-    download_data(num_shards, download_workers=args.download_workers)
-    print()
-
-    # Step 2: Train tokenizer
-    train_tokenizer()
-    print()
-    print("Done! Ready to train.")
+    return metrics

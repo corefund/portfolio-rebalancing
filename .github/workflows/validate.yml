@@ -1,0 +1,139 @@
+name: Validate Portfolio Strategy
+
+on:
+  pull_request:
+    branches: [main, master]
+  push:
+    branches: ["autoresearch/**"]
+  workflow_dispatch:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    env:
+      UNIVERSE_URL: "https://docs.google.com/spreadsheets/d/1C68qzjiyhcdgKhUwd0KxikQMWNpgphNc/export?format=csv"
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+
+      - name: Run backtest on validation split
+        id: backtest
+        run: |
+          python3 strategy.py > run.log 2>&1
+
+          # Extract metrics
+          COMPOSITE_SCORE=$(grep "^composite_score:" run.log | awk '{print $2}')
+          SHARPE=$(grep "^sharpe:" run.log | awk '{print $2}')
+          CAGR=$(grep "^cagr:" run.log | awk '{print $2}')
+          MAX_DD=$(grep "^max_drawdown:" run.log | awk '{print $2}')
+          VOLATILITY=$(grep "^volatility:" run.log | awk '{print $2}')
+
+          echo "composite_score=$COMPOSITE_SCORE" >> $GITHUB_OUTPUT
+          echo "sharpe=$SHARPE" >> $GITHUB_OUTPUT
+          echo "cagr=$CAGR" >> $GITHUB_OUTPUT
+          echo "max_drawdown=$MAX_DD" >> $GITHUB_OUTPUT
+          echo "volatility=$VOLATILITY" >> $GITHUB_OUTPUT
+
+          # Check if backtest succeeded
+          if [ -z "$COMPOSITE_SCORE" ]; then
+            echo "Backtest failed!"
+            cat run.log
+            exit 1
+          fi
+
+          echo "Backtest succeeded!"
+          echo "Composite Score: $COMPOSITE_SCORE"
+
+      - name: Compare with baseline
+        id: compare
+        run: |
+          # Baseline score (from initial commit)
+          BASELINE_SCORE=0.563403
+          NEW_SCORE=${{ steps.backtest.outputs.composite_score }}
+
+          # Compare scores
+          IMPROVED=$(python3 -c "print('true' if float('$NEW_SCORE') > float('$BASELINE_SCORE') else 'false')")
+          DELTA=$(python3 -c "print(float('$NEW_SCORE') - float('$BASELINE_SCORE'))")
+          PERCENT=$(python3 -c "print((float('$NEW_SCORE') - float('$BASELINE_SCORE')) / abs(float('$BASELINE_SCORE')) * 100)")
+
+          echo "improved=$IMPROVED" >> $GITHUB_OUTPUT
+          echo "delta=$DELTA" >> $GITHUB_OUTPUT
+          echo "percent=$PERCENT" >> $GITHUB_OUTPUT
+
+          if [ "$IMPROVED" = "true" ]; then
+            echo "Improvement detected: +$DELTA (+$PERCENT%)"
+          else
+            echo "No improvement: $DELTA ($PERCENT%)"
+          fi
+
+      - name: Upload results
+        uses: actions/upload-artifact@v4
+        with:
+          name: validation-results
+          path: run.log
+
+      - name: Comment on PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const improved = '${{ steps.compare.outputs.improved }}' === 'true';
+            const delta = parseFloat('${{ steps.compare.outputs.delta }}');
+            const percent = parseFloat('${{ steps.compare.outputs.percent }}');
+            const compositeScore = parseFloat('${{ steps.backtest.outputs.composite_score }}');
+            const sharpe = parseFloat('${{ steps.backtest.outputs.sharpe }}');
+            const cagr = parseFloat('${{ steps.backtest.outputs.cagr }}');
+            const maxDD = parseFloat('${{ steps.backtest.outputs.max_drawdown }}');
+            const volatility = parseFloat('${{ steps.backtest.outputs.volatility }}');
+
+            const emoji = improved ? 'yes' : 'no';
+            const status = improved ? '**IMPROVEMENT**' : 'No improvement';
+
+            const comment = `${emoji} **Portfolio Strategy Validation**
+
+            ## Results
+
+            | Metric | Value |
+            |--------|-------|
+            | Composite Score | ${compositeScore.toFixed(6)} |
+            | Sharpe Ratio | ${sharpe.toFixed(4)} |
+            | CAGR | ${(cagr * 100).toFixed(2)}% |
+            | Max Drawdown | ${(maxDD * 100).toFixed(2)}% |
+            | Volatility | ${(volatility * 100).toFixed(2)}% |
+
+            ## Comparison vs Baseline
+
+            - **Status**: ${status}
+            - **Delta**: ${delta >= 0 ? '+' : ''}${delta.toFixed(6)} (${percent >= 0 ? '+' : ''}${percent.toFixed(2)}%)
+            - **Baseline**: 0.563403
+
+            ${improved ? 'This strategy improves the composite score!' : 'This strategy does not improve the composite score.'}
+            `;
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
+
+      - name: Set status
+        if: always()
+        run: |
+          if [ "${{ steps.compare.outputs.improved }}" = "true" ]; then
+            echo "Validation passed: Strategy improved!"
+            exit 0
+          else
+            echo "Validation completed: No improvement"
+            exit 0
+          fi
