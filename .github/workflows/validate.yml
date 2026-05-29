@@ -104,71 +104,72 @@ jobs:
       - name: Update README with progress graph
         if: steps.compare.outputs.improved == 'true'
         run: |
-          # Get server IP from commit author or use GitHub Actions IP
           SERVER_IP="${{ github.event.head_commit.author.name }}"
           if [[ ! "$SERVER_IP" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
             SERVER_IP="github-actions"
           fi
 
-          # Create or update README
-          cat > README.md << EOF
-# Portfolio Rebalancing Research
+          SCORE="${{ steps.backtest.outputs.composite_score }}"
+          DELTA="${{ steps.compare.outputs.delta }}"
+          PERCENT="${{ steps.compare.outputs.percent }}"
+          SHARPE="${{ steps.backtest.outputs.sharpe }}"
+          CAGR="${{ steps.backtest.outputs.cagr }}"
+          MAX_DD="${{ steps.backtest.outputs.max_drawdown }}"
+          VOLATILITY="${{ steps.backtest.outputs.volatility }}"
+          BRANCH="${{ github.ref_name }}"
+          TIMESTAMP=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
 
-Autonomous genetic algorithm research for portfolio optimization.
-
-## Latest Results
-
-**Best Score:** ${{ steps.backtest.outputs.composite_score }}
-**Improvement:** +${{ steps.compare.outputs.delta }} (+${{ steps.compare.outputs.percent }}%)
-**Server:** ${SERVER_IP}
-**Branch:** ${{ github.ref_name }}
-**Updated:** $(date -u +"%Y-%m-%d %H:%M:%S UTC")
-
-### Metrics
-- **Sharpe Ratio:** ${{ steps.backtest.outputs.sharpe }}
-- **CAGR:** ${{ steps.backtest.outputs.cagr }}
-- **Max Drawdown:** ${{ steps.backtest.outputs.max_drawdown }}
-- **Volatility:** ${{ steps.backtest.outputs.volatility }}
-
-## Research Progress
-
-![Research Progress](progress.png)
-
----
-*Last updated by ${SERVER_IP} on $(date -u +"%Y-%m-%d %H:%M:%S UTC")*
-EOF
+          echo "# Portfolio Rebalancing Research" > README.md
+          echo "" >> README.md
+          echo "Autonomous genetic algorithm research for portfolio optimization." >> README.md
+          echo "" >> README.md
+          echo "## Latest Results" >> README.md
+          echo "" >> README.md
+          echo "**Best Score:** ${SCORE}" >> README.md
+          echo "**Improvement:** +${DELTA} (+${PERCENT}%)" >> README.md
+          echo "**Server:** ${SERVER_IP}" >> README.md
+          echo "**Branch:** ${BRANCH}" >> README.md
+          echo "**Updated:** ${TIMESTAMP}" >> README.md
+          echo "" >> README.md
+          echo "### Metrics" >> README.md
+          echo "- **Sharpe Ratio:** ${SHARPE}" >> README.md
+          echo "- **CAGR:** ${CAGR}" >> README.md
+          echo "- **Max Drawdown:** ${MAX_DD}" >> README.md
+          echo "- **Volatility:** ${VOLATILITY}" >> README.md
+          echo "" >> README.md
+          echo "## Research Progress" >> README.md
+          echo "" >> README.md
+          echo "![Research Progress](progress.png)" >> README.md
+          echo "" >> README.md
+          echo "---" >> README.md
+          echo "*Last updated by ${SERVER_IP} on ${TIMESTAMP}*" >> README.md
 
           echo "✅ README.md updated"
 
       - name: Commit and push updates
         if: steps.compare.outputs.improved == 'true'
         run: |
-          # Get server IP from commit or use default
           SERVER_IP="${{ github.event.head_commit.author.name }}"
           if [[ ! "$SERVER_IP" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
             SERVER_IP="github-actions"
           fi
 
-          # Configure git with server IP as committer
           git config user.name "${SERVER_IP}"
           git config user.email "${SERVER_IP}@research.bot"
 
-          # Add files
           git add README.md progress.png || true
 
-          # Check if there are changes to commit
           if git diff --staged --quiet; then
             echo "No changes to commit"
           else
-            git commit -m "Update research progress from ${SERVER_IP}
+            SCORE="${{ steps.backtest.outputs.composite_score }}"
+            DELTA="${{ steps.compare.outputs.delta }}"
+            PERCENT="${{ steps.compare.outputs.percent }}"
+            SHARPE="${{ steps.backtest.outputs.sharpe }}"
+            CAGR="${{ steps.backtest.outputs.cagr }}"
 
-Composite Score: ${{ steps.backtest.outputs.composite_score }}
-Improvement: +${{ steps.compare.outputs.delta }} (+${{ steps.compare.outputs.percent }}%)
-Sharpe: ${{ steps.backtest.outputs.sharpe }}
-CAGR: ${{ steps.backtest.outputs.cagr }}"
-
-            # Push changes
-            git push origin HEAD:${{ github.ref_name }} || echo "Push failed, continuing..."
+            git commit -m "Update research progress from ${SERVER_IP}" -m "Composite Score: ${SCORE}" -m "Improvement: +${DELTA} (+${PERCENT}%)" -m "Sharpe: ${SHARPE}" -m "CAGR: ${CAGR}"
+            git push origin HEAD || echo "Push failed, continuing..."
           fi
 
       - name: Upload results
