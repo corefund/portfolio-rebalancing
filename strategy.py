@@ -58,7 +58,7 @@ class Chromosome:
 # GA Operators
 # ---------------------------------------------------------------------------
 
-def mutate(chromosome, rate=0.1):
+def mutate(chromosome, rate=0.15):
     """Gaussian mutation on scores and logits."""
     n = len(chromosome.selection_scores)
 
