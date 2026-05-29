@@ -29,7 +29,7 @@ class Chromosome:
         self.selection_scores = np.random.randn(n) * 0.1
         self.allocation_logits = np.random.randn(n) * 0.1
         self.top_k = 5
-        self.rebalance_threshold = 0.03
+        self.rebalance_threshold = 0.04
 
     def decode_weights(self):
         """Convert chromosome to portfolio weights."""
