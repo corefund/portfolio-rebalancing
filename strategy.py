@@ -64,11 +64,11 @@ def mutate(chromosome, rate=0.15):
 
     # Mutate selection scores
     mask = np.random.rand(n) < rate
-    chromosome.selection_scores[mask] += np.random.randn(mask.sum()) * 0.1
+    chromosome.selection_scores[mask] += np.random.randn(mask.sum()) * 0.15
 
     # Mutate allocation logits
     mask = np.random.rand(n) < rate
-    chromosome.allocation_logits[mask] += np.random.randn(mask.sum()) * 0.1
+    chromosome.allocation_logits[mask] += np.random.randn(mask.sum()) * 0.15
 
     # Occasionally mutate top_k
     if np.random.rand() < 0.1:
