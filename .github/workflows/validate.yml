@@ -11,11 +11,13 @@ jobs:
   validate:
     runs-on: ubuntu-latest
     env:
-      UNIVERSE_URL: "https://docs.google.com/spreadsheets/d/1C68qzjiyhcdgKhUwd0KxikQMWNpgphNc/export?format=csv"
+      UNIVERSE_URL: "https://docs.google.com/spreadsheets/d/1EPhaRAp-jd4iIBYnclwBKx2OY7X96lt2TtqsZzQ7dqU/edit?usp=drive_link"
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -25,6 +27,7 @@ jobs:
       - name: Install dependencies
         run: |
           pip install -r requirements.txt
+          pip install jupyter nbconvert matplotlib seaborn
 
       - name: Run backtest on validation split
         id: backtest
@@ -71,16 +74,111 @@ jobs:
           echo "percent=$PERCENT" >> $GITHUB_OUTPUT
 
           if [ "$IMPROVED" = "true" ]; then
-            echo "Improvement detected: +$DELTA (+$PERCENT%)"
+            echo "✅ Improvement detected: +$DELTA (+$PERCENT%)"
           else
-            echo "No improvement: $DELTA ($PERCENT%)"
+            echo "❌ No improvement: $DELTA ($PERCENT%)"
+          fi
+
+      - name: Generate progress graph
+        if: steps.compare.outputs.improved == 'true'
+        run: |
+          # Check if results.tsv exists
+          if [ ! -f results.tsv ]; then
+            echo "⚠️ results.tsv not found, creating from current run"
+            echo -e "commit\tcomposite_score\tstatus\tdescription" > results.tsv
+            COMMIT=$(git rev-parse --short HEAD)
+            SCORE=${{ steps.backtest.outputs.composite_score }}
+            echo -e "${COMMIT}\t${SCORE}\tkeep\timprovement" >> results.tsv
+          fi
+
+          # Run notebook to generate progress.png
+          jupyter nbconvert --to notebook --execute analitics.ipynb --output analitics_executed.ipynb || echo "Notebook execution failed, continuing..."
+
+          # Check if progress.png was generated
+          if [ -f progress.png ]; then
+            echo "✅ progress.png generated"
+          else
+            echo "⚠️ progress.png not generated"
+          fi
+
+      - name: Update README with progress graph
+        if: steps.compare.outputs.improved == 'true'
+        run: |
+          # Get server IP from commit author or use GitHub Actions IP
+          SERVER_IP="${{ github.event.head_commit.author.name }}"
+          if [[ ! "$SERVER_IP" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            SERVER_IP="github-actions"
+          fi
+
+          # Create or update README
+          cat > README.md << 'EOF'
+# Portfolio Rebalancing Research
+
+Autonomous genetic algorithm research for portfolio optimization.
+
+## Latest Results
+
+**Best Score:** ${{ steps.backtest.outputs.composite_score }}
+**Improvement:** +${{ steps.compare.outputs.delta }} (+${{ steps.compare.outputs.percent }}%)
+**Server:** ${SERVER_IP}
+**Branch:** ${{ github.ref_name }}
+**Updated:** $(date -u +"%Y-%m-%d %H:%M:%S UTC")
+
+### Metrics
+- **Sharpe Ratio:** ${{ steps.backtest.outputs.sharpe }}
+- **CAGR:** ${{ steps.backtest.outputs.cagr }}
+- **Max Drawdown:** ${{ steps.backtest.outputs.max_drawdown }}
+- **Volatility:** ${{ steps.backtest.outputs.volatility }}
+
+## Research Progress
+
+![Research Progress](progress.png)
+
+---
+*Last updated by ${SERVER_IP} on $(date -u +"%Y-%m-%d %H:%M:%S UTC")*
+EOF
+
+          echo "✅ README.md updated"
+
+      - name: Commit and push updates
+        if: steps.compare.outputs.improved == 'true'
+        run: |
+          # Get server IP from commit or use default
+          SERVER_IP="${{ github.event.head_commit.author.name }}"
+          if [[ ! "$SERVER_IP" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            SERVER_IP="github-actions"
+          fi
+
+          # Configure git with server IP as committer
+          git config user.name "${SERVER_IP}"
+          git config user.email "${SERVER_IP}@research.bot"
+
+          # Add files
+          git add README.md progress.png || true
+
+          # Check if there are changes to commit
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "Update research progress from ${SERVER_IP}
+
+Composite Score: ${{ steps.backtest.outputs.composite_score }}
+Improvement: +${{ steps.compare.outputs.delta }} (+${{ steps.compare.outputs.percent }}%)
+Sharpe: ${{ steps.backtest.outputs.sharpe }}
+CAGR: ${{ steps.backtest.outputs.cagr }}"
+
+            # Push changes
+            git push origin HEAD:${{ github.ref_name }} || echo "Push failed, continuing..."
           fi
 
       - name: Upload results
         uses: actions/upload-artifact@v4
         with:
           name: validation-results
-          path: run.log
+          path: |
+            run.log
+            progress.png
+            README.md
 
       - name: Comment on PR
         if: github.event_name == 'pull_request'
@@ -96,7 +194,7 @@ jobs:
             const maxDD = parseFloat('${{ steps.backtest.outputs.max_drawdown }}');
             const volatility = parseFloat('${{ steps.backtest.outputs.volatility }}');
 
-            const emoji = improved ? 'yes' : 'no';
+            const emoji = improved ? '✅' : '❌';
             const status = improved ? '**IMPROVEMENT**' : 'No improvement';
 
             const comment = `${emoji} **Portfolio Strategy Validation**
@@ -117,7 +215,7 @@ jobs:
             - **Delta**: ${delta >= 0 ? '+' : ''}${delta.toFixed(6)} (${percent >= 0 ? '+' : ''}${percent.toFixed(2)}%)
             - **Baseline**: 0.563403
 
-            ${improved ? 'This strategy improves the composite score!' : 'This strategy does not improve the composite score.'}
+            ${improved ? '🎉 This strategy improves the composite score! README and progress graph have been updated.' : 'This strategy does not improve the composite score.'}
             `;
 
             github.rest.issues.createComment({
@@ -131,9 +229,9 @@ jobs:
         if: always()
         run: |
           if [ "${{ steps.compare.outputs.improved }}" = "true" ]; then
-            echo "Validation passed: Strategy improved!"
+            echo "✅ Validation passed: Strategy improved!"
             exit 0
           else
-            echo "Validation completed: No improvement"
+            echo "ℹ️ Validation completed: No improvement"
             exit 0
           fi
