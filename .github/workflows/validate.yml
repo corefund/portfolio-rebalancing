@@ -111,7 +111,7 @@ jobs:
           fi
 
           # Create or update README
-          cat > README.md << 'EOF'
+          cat > README.md << EOF
 # Portfolio Rebalancing Research
 
 Autonomous genetic algorithm research for portfolio optimization.
