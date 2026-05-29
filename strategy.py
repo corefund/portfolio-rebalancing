@@ -28,7 +28,7 @@ class Chromosome:
         # Initialize with random values
         self.selection_scores = np.random.randn(n) * 0.1
         self.allocation_logits = np.random.randn(n) * 0.1
-        self.top_k = 5
+        self.top_k = 12  # Select at least 12 assets for diversification
         self.rebalance_threshold = 0.05
 
     def decode_weights(self):
