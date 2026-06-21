@@ -1,0 +1,50 @@
+{
+  "generation": 0,
+  "portfolio_id": "agent_2_gen0",
+  "agent_name": "agent_2",
+  "assets": [
+    {
+      "ticker": "SPY",
+      "weight": 0.25,
+      "reason": "Core equity exposure"
+    },
+    {
+      "ticker": "AGG",
+      "weight": 0.2,
+      "reason": "Fixed income stability"
+    },
+    {
+      "ticker": "MSFT",
+      "weight": 0.12,
+      "reason": "Quality tech"
+    },
+    {
+      "ticker": "JNJ",
+      "weight": 0.1,
+      "reason": "Defensive healthcare"
+    },
+    {
+      "ticker": "GLD",
+      "weight": 0.1,
+      "reason": "Inflation protection"
+    },
+    {
+      "ticker": "BTC-USD",
+      "weight": 0.08,
+      "reason": "Alternative asset"
+    },
+    {
+      "ticker": "VTI",
+      "weight": 0.08,
+      "reason": "Broad market"
+    },
+    {
+      "ticker": "BND",
+      "weight": 0.07,
+      "reason": "Additional bonds"
+    }
+  ],
+  "total_weight": 1.0,
+  "expected_sharpe": 1.42,
+  "explanation": "Balanced 60/40-style allocation with moderate tech exposure. Diversified across equities, bonds, commodities, and crypto. Lower volatility target."
+}

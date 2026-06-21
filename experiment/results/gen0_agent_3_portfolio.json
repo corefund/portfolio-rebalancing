@@ -1,0 +1,50 @@
+{
+  "generation": 0,
+  "portfolio_id": "agent_3_gen0",
+  "agent_name": "agent_3",
+  "assets": [
+    {
+      "ticker": "AGG",
+      "weight": 0.22,
+      "reason": "Core bonds"
+    },
+    {
+      "ticker": "BND",
+      "weight": 0.18,
+      "reason": "Additional fixed income"
+    },
+    {
+      "ticker": "SPY",
+      "weight": 0.15,
+      "reason": "Equity exposure"
+    },
+    {
+      "ticker": "JNJ",
+      "weight": 0.12,
+      "reason": "Defensive healthcare"
+    },
+    {
+      "ticker": "GLD",
+      "weight": 0.12,
+      "reason": "Safe haven"
+    },
+    {
+      "ticker": "V",
+      "weight": 0.08,
+      "reason": "Stable growth"
+    },
+    {
+      "ticker": "TLT",
+      "weight": 0.08,
+      "reason": "Long duration bonds"
+    },
+    {
+      "ticker": "LQD",
+      "weight": 0.05,
+      "reason": "Corporate bonds"
+    }
+  ],
+  "total_weight": 1.0,
+  "expected_sharpe": 1.28,
+  "explanation": "Conservative portfolio with 53% bonds for capital preservation. Defensive equity selection (healthcare, payments). Gold as portfolio insurance. Lower expected return but reduced drawdown."
+}

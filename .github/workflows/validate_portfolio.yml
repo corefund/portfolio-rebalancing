@@ -1,0 +1,67 @@
+name: Validate Portfolio Proposal
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+    paths:
+      - 'experiment/results/**'
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+
+    - name: Install dependencies
+      run: |
+        pip install pandas numpy requests
+
+    - name: Validate portfolio
+      id: validate
+      run: |
+        python experiment/validate_portfolio.py
+      continue-on-error: true
+
+    - name: Post validation result
+      uses: actions/github-script@v6
+      with:
+        script: |
+          const fs = require('fs');
+          const result = fs.existsSync('validation_result.json')
+            ? JSON.parse(fs.readFileSync('validation_result.json', 'utf8'))
+            : { valid: false, errors: ['Validation script failed'] };
+
+          let body = '## Portfolio Validation Result\n\n';
+
+          if (result.valid) {
+            body += '✅ **Portfolio is valid**\n\n';
+            body += `### Metrics\n`;
+            body += `- **Total Weight**: ${result.metrics.total_weight.toFixed(4)}\n`;
+            body += `- **Number of Assets**: ${result.metrics.num_assets}\n`;
+            body += `- **Max Concentration**: ${(result.metrics.max_weight * 100).toFixed(2)}%\n`;
+            body += `- **Min Weight**: ${(result.metrics.min_weight * 100).toFixed(2)}%\n`;
+          } else {
+            body += '❌ **Portfolio validation failed**\n\n';
+            body += '### Errors\n';
+            result.errors.forEach(err => {
+              body += `- ${err}\n`;
+            });
+          }
+
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: body
+          });
+
+          if (!result.valid) {
+            core.setFailed('Portfolio validation failed');
+          }

@@ -1,0 +1,55 @@
+{
+  "generation": 1,
+  "portfolio_id": "agent_3_gen1",
+  "agent_name": "agent_3",
+  "assets": [
+    {
+      "ticker": "NVDA",
+      "weight": 0.1961,
+      "reason": "AI/GPU dominance"
+    },
+    {
+      "ticker": "MSFT",
+      "weight": 0.1471,
+      "reason": "Cloud and AI integration"
+    },
+    {
+      "ticker": "GOOGL",
+      "weight": 0.1176,
+      "reason": "Search + AI moat"
+    },
+    {
+      "ticker": "AAPL",
+      "weight": 0.0686,
+      "reason": "Reduced for rebalance"
+    },
+    {
+      "ticker": "JNJ",
+      "weight": 0.05,
+      "reason": "Defensive healthcare addition"
+    },
+    {
+      "ticker": "BTC-USD",
+      "weight": 0.098,
+      "reason": "Tech adoption proxy"
+    },
+    {
+      "ticker": "SPY",
+      "weight": 0.1471,
+      "reason": "Market exposure"
+    },
+    {
+      "ticker": "AGG",
+      "weight": 0.098,
+      "reason": "Risk balance"
+    },
+    {
+      "ticker": "GLD",
+      "weight": 0.0784,
+      "reason": "Inflation hedge"
+    }
+  ],
+  "total_weight": 0.9999,
+  "expected_sharpe": 1.58,
+  "explanation": "Added Johnson & Johnson for defensive balance. Slightly reduced AAPL concentration. Portfolio now includes healthcare sector exposure, reducing tech dependency to 54%."
+}
