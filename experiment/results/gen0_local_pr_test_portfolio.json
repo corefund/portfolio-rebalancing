@@ -1,0 +1,34 @@
+{
+  "generation": 0,
+  "agent_id": "local_pr_test",
+  "timestamp": "2026-06-21T13:00:00Z",
+  "expected_sharpe": 1.65,
+  "explanation": "E2E test portfolio demonstrating full workflow. Conservative allocation with growth potential through tech exposure, stability via bonds, and hedge through gold.",
+  "assets": [
+    {
+      "ticker": "SPY",
+      "weight": 0.25,
+      "reason": "Core US market exposure for beta"
+    },
+    {
+      "ticker": "QQQ",
+      "weight": 0.20,
+      "reason": "Tech sector growth potential"
+    },
+    {
+      "ticker": "AGG",
+      "weight": 0.20,
+      "reason": "Investment grade bonds for stability"
+    },
+    {
+      "ticker": "GLD",
+      "weight": 0.15,
+      "reason": "Gold as inflation hedge"
+    },
+    {
+      "ticker": "VTI",
+      "weight": 0.20,
+      "reason": "Total US market diversification"
+    }
+  ]
+}
