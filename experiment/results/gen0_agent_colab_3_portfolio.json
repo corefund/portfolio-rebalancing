@@ -1,0 +1,20 @@
+{
+  "generation": 0,
+  "agent_id": "agent_colab_3",
+  "timestamp": "2026-06-22T12:21:15Z",
+  "expected_sharpe": 1.73,
+  "explanation": "Portfolio generated on Colab machine 85.192.41.246:18584. Balanced allocation optimized for risk-adjusted returns.",
+  "machine_info": {
+    "ip": "85.192.41.246",
+    "port": "18584",
+    "agent": "agent_colab_3"
+  },
+  "assets": [
+    {"ticker": "SPY", "weight": 0.22, "reason": "US market core exposure"},
+    {"ticker": "QQQ", "weight": 0.18, "reason": "Tech sector growth"},
+    {"ticker": "AGG", "weight": 0.20, "reason": "Bond stability"},
+    {"ticker": "GLD", "weight": 0.15, "reason": "Gold inflation hedge"},
+    {"ticker": "VTI", "weight": 0.15, "reason": "Broad market diversification"},
+    {"ticker": "AAPL", "weight": 0.10, "reason": "Tech leader"}
+  ]
+}
