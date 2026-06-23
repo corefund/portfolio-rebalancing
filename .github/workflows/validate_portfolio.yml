@@ -42,11 +42,26 @@ jobs:
 
           if (result.valid) {
             body += '✅ **Portfolio is valid**\n\n';
-            body += `### Metrics\n`;
+            body += `### Basic Metrics\n`;
             body += `- **Total Weight**: ${result.metrics.total_weight.toFixed(4)}\n`;
             body += `- **Number of Assets**: ${result.metrics.num_assets}\n`;
             body += `- **Max Concentration**: ${(result.metrics.max_weight * 100).toFixed(2)}%\n`;
             body += `- **Min Weight**: ${(result.metrics.min_weight * 100).toFixed(2)}%\n`;
+
+            // Add performance metrics if available
+            if (result.metrics.fitness !== undefined) {
+              body += `\n### Performance Metrics\n`;
+              body += `- **Fitness Score**: ${result.metrics.fitness.toFixed(4)}\n`;
+              body += `- **Sharpe Ratio**: ${result.metrics.sharpe.toFixed(3)}\n`;
+              body += `- **Sortino Ratio**: ${result.metrics.sortino.toFixed(3)}\n`;
+              body += `- **Calmar Ratio**: ${result.metrics.calmar.toFixed(3)}\n`;
+              body += `- **CAGR**: ${(result.metrics.cagr * 100).toFixed(2)}%\n`;
+              body += `- **Total Return**: ${(result.metrics.total_return * 100).toFixed(2)}%\n`;
+              body += `- **Volatility**: ${(result.metrics.volatility * 100).toFixed(2)}%\n`;
+              body += `- **Max Drawdown**: ${(result.metrics.max_drawdown * 100).toFixed(2)}%\n`;
+              body += `- **Alpha**: ${result.metrics.alpha.toFixed(3)}\n`;
+              body += `- **Beta**: ${result.metrics.beta.toFixed(3)}\n`;
+            }
           } else {
             body += '❌ **Portfolio validation failed**\n\n';
             body += '### Errors\n';

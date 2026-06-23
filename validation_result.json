@@ -1,0 +1,21 @@
+{
+  "valid": true,
+  "errors": [],
+  "metrics": {
+    "total_weight": 1.0009000000000001,
+    "num_assets": 9,
+    "max_weight": 0.1961,
+    "min_weight": 0.05,
+    "fitness": 1.5378,
+    "sharpe": 1.5320439196693776,
+    "sortino": 2.479139710105564,
+    "calmar": 3.4150737312479835,
+    "cagr": 0.3546976607517296,
+    "total_return": 0.04810351626413478,
+    "volatility": 0.2126209717150568,
+    "max_drawdown": 0.0953843730897164,
+    "alpha": 0.3257446669102475,
+    "beta": 1.0
+  },
+  "file": "experiment/results/gen1_agent_3_portfolio.json"
+}

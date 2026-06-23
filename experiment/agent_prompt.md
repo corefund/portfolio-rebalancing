@@ -26,11 +26,26 @@ Analyze the current portfolio and propose improvements by:
 
 ## Optimization Goals
 
-Prioritize (in order):
-1. **Sharpe Ratio** - maximize risk-adjusted returns
-2. **Diversification** - avoid concentration in single assets/sectors
-3. **Volatility** - reduce overall portfolio risk
-4. **Drawdown** - minimize maximum historical drawdown
+Your portfolio will be evaluated using this comprehensive fitness function:
+
+**Fitness = 0.35×Sharpe + 0.20×Sortino + 0.15×Calmar + 0.15×CAGR + 0.10×TotalReturn - 0.10×Volatility - 0.10×MaxDrawdown + 0.05×Alpha - 0.05×Beta**
+
+Where:
+- **Sharpe Ratio** (35%) - risk-adjusted returns using total volatility
+- **Sortino Ratio** (20%) - risk-adjusted returns using downside volatility
+- **Calmar Ratio** (15%) - return relative to maximum drawdown
+- **CAGR** (15%) - compound annual growth rate
+- **Total Return** (10%) - cumulative return over period
+- **Volatility** (-10%) - annualized standard deviation (penalty)
+- **Max Drawdown** (-10%) - largest peak-to-trough decline (penalty)
+- **Alpha** (5%) - excess return above risk-free rate
+- **Beta** (-5%) - market correlation (penalty for high correlation)
+
+Prioritize strategies that:
+1. Maximize risk-adjusted returns (Sharpe, Sortino, Calmar)
+2. Achieve strong absolute returns (CAGR, Total Return)
+3. Minimize downside risk (Volatility, Max Drawdown)
+4. Generate alpha while managing market exposure (Alpha, Beta)
 
 ## Output Format
 
@@ -46,7 +61,6 @@ Respond with a valid JSON object:
   ],
   "total_weight": 1.0,
   "explanation": "Brief explanation of your changes",
-  "expected_sharpe": <estimate>,
   "agent_name": "<your_agent_id>"
 }
 ```

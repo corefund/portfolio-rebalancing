@@ -5,38 +5,182 @@ Genetic Algorithm evolution operators for portfolio optimization
 
 import random
 import json
-from typing import Dict, List, Tuple
+import numpy as np
+import pandas as pd
+from typing import Dict, List, Tuple, Optional
 from pathlib import Path
 
 
-def calculate_fitness(portfolio: Dict) -> float:
+def load_historical_data(csv_path: str = None) -> pd.DataFrame:
     """
-    Calculate fitness score for a portfolio
+    Load historical price data
 
-    Components:
-    1. Primary: expected_sharpe (if provided by agent)
-    2. Diversity bonus: 1 - max_weight (prefer distributed portfolios)
-    3. Universe coverage bonus: log(num_assets) (prefer more assets)
+    Args:
+        csv_path: Path to CSV file or URL
+
+    Returns:
+        DataFrame with Date index and ticker columns
+    """
+    if csv_path is None:
+        csv_path = "https://docs.google.com/spreadsheets/d/1f3xJomL2UlCn7887jpX_MQZBsQWbmVKiQXsUdZ3kkcE/export?format=csv"
+
+    df = pd.read_csv(csv_path)
+    df['Date'] = pd.to_datetime(df['Date'])
+    df.set_index('Date', inplace=True)
+
+    return df
+
+
+def calculate_portfolio_returns(portfolio: Dict, prices: pd.DataFrame) -> pd.Series:
+    """
+    Calculate daily portfolio returns based on weights
+
+    Args:
+        portfolio: Portfolio with assets and weights
+        prices: Historical price DataFrame
+
+    Returns:
+        Series of daily portfolio returns
+    """
+    # Calculate daily returns for each asset
+    returns = prices.pct_change().dropna()
+
+    # Get portfolio weights
+    weights = {}
+    for asset in portfolio['assets']:
+        ticker = asset['ticker']
+        if ticker in returns.columns:
+            weights[ticker] = asset['weight']
+
+    # Calculate weighted portfolio returns
+    portfolio_returns = pd.Series(0.0, index=returns.index)
+
+    for ticker, weight in weights.items():
+        if ticker in returns.columns:
+            portfolio_returns += returns[ticker] * weight
+
+    return portfolio_returns
+
+
+def calculate_metrics(returns: pd.Series, risk_free_rate: float = 0.0) -> Dict[str, float]:
+    """
+    Calculate all performance metrics for portfolio returns
+
+    Args:
+        returns: Series of daily returns
+        risk_free_rate: Annual risk-free rate (default 0.0)
+
+    Returns:
+        Dict with all metrics
+    """
+    if len(returns) == 0 or returns.std() == 0:
+        return {
+            'sharpe': 0.0,
+            'sortino': 0.0,
+            'calmar': 0.0,
+            'cagr': 0.0,
+            'total_return': 0.0,
+            'volatility': 0.0,
+            'max_drawdown': 0.0,
+            'alpha': 0.0,
+            'beta': 1.0
+        }
+
+    # Annualization factor (252 trading days)
+    annual_factor = 252
+
+    # 1. Sharpe Ratio
+    mean_return = returns.mean()
+    std_return = returns.std()
+    sharpe = (mean_return * annual_factor - risk_free_rate) / (std_return * np.sqrt(annual_factor))
+
+    # 2. Sortino Ratio (downside deviation)
+    downside_returns = returns[returns < 0]
+    downside_std = downside_returns.std() if len(downside_returns) > 0 else std_return
+    sortino = (mean_return * annual_factor - risk_free_rate) / (downside_std * np.sqrt(annual_factor))
+
+    # 3. Max Drawdown
+    cumulative = (1 + returns).cumprod()
+    running_max = cumulative.expanding().max()
+    drawdown = (cumulative - running_max) / running_max
+    max_drawdown = abs(drawdown.min())
+
+    # 4. Calmar Ratio
+    calmar = (mean_return * annual_factor) / max_drawdown if max_drawdown > 0 else 0.0
+
+    # 5. CAGR (Compound Annual Growth Rate)
+    total_return = cumulative.iloc[-1] - 1
+    years = len(returns) / annual_factor
+    cagr = (1 + total_return) ** (1 / years) - 1 if years > 0 else 0.0
+
+    # 6. Total Return
+    total_return = cumulative.iloc[-1] - 1
+
+    # 7. Volatility (annualized)
+    volatility = std_return * np.sqrt(annual_factor)
+
+    # 8. Alpha and Beta (simplified, using market proxy if available)
+    # For now, use simplified estimates
+    alpha = mean_return * annual_factor - risk_free_rate  # Excess return
+    beta = 1.0  # Placeholder
+
+    return {
+        'sharpe': float(sharpe),
+        'sortino': float(sortino),
+        'calmar': float(calmar),
+        'cagr': float(cagr),
+        'total_return': float(total_return),
+        'volatility': float(volatility),
+        'max_drawdown': float(max_drawdown),
+        'alpha': float(alpha),
+        'beta': float(beta)
+    }
+
+
+def calculate_fitness(portfolio: Dict, prices: Optional[pd.DataFrame] = None) -> float:
+    """
+    Calculate fitness score using comprehensive metrics
+
+    Fitness = 0.35×Sharpe + 0.20×Sortino + 0.15×Calmar + 0.15×CAGR
+              + 0.10×TotalReturn - 0.10×Volatility - 0.10×MaxDrawdown
+              + 0.05×Alpha - 0.05×Beta
+
+    Args:
+        portfolio: Portfolio dict with assets and weights
+        prices: Historical price DataFrame (loaded once and cached)
 
     Returns:
         Float fitness score (higher is better)
     """
-    # Primary: use agent's Sharpe estimate if available
-    base_fitness = portfolio.get('expected_sharpe', 1.0)
+    # If prices not provided, try to use cached or load
+    if prices is None:
+        if not hasattr(calculate_fitness, '_prices_cache'):
+            calculate_fitness._prices_cache = load_historical_data()
+        prices = calculate_fitness._prices_cache
 
-    # Diversity bonus
-    weights = [asset['weight'] for asset in portfolio['assets']]
-    max_weight = max(weights) if weights else 0
-    diversity_bonus = (1.0 - max_weight) * 0.5  # Up to +0.5
+    # Calculate portfolio returns
+    returns = calculate_portfolio_returns(portfolio, prices)
 
-    # Asset count bonus (encourage exploration)
-    import math
-    num_assets = len(portfolio['assets'])
-    asset_bonus = math.log(num_assets + 1) * 0.1  # Up to ~0.3 for 20 assets
+    # Calculate all metrics
+    metrics = calculate_metrics(returns)
 
-    total_fitness = base_fitness + diversity_bonus + asset_bonus
+    # Store metrics in portfolio for logging
+    portfolio['metrics'] = metrics
 
-    return round(total_fitness, 4)
+    # Apply fitness formula
+    fitness = (
+        0.35 * metrics['sharpe'] +
+        0.20 * metrics['sortino'] +
+        0.15 * metrics['calmar'] +
+        0.15 * metrics['cagr'] +
+        0.10 * metrics['total_return'] -
+        0.10 * metrics['volatility'] -
+        0.10 * metrics['max_drawdown'] +
+        0.05 * metrics['alpha'] -
+        0.05 * metrics['beta']
+    )
+
+    return round(fitness, 4)
 
 
 def crossover(parent1: Dict, parent2: Dict) -> Dict:
@@ -193,20 +337,25 @@ def mutate(portfolio: Dict, universe: List[str], mutation_rate: float = 0.15) ->
     return mutated
 
 
-def select_best(portfolios: List[Dict], k: int = 2) -> List[Dict]:
+def select_best(portfolios: List[Dict], k: int = 2, prices: Optional[pd.DataFrame] = None) -> List[Dict]:
     """
     Select top k portfolios by fitness
 
     Args:
         portfolios: List of portfolio dicts
         k: Number to select
+        prices: Historical price DataFrame (optional, will be cached)
 
     Returns:
         Top k portfolios sorted by fitness
     """
+    # Load prices once for all portfolios
+    if prices is None:
+        prices = load_historical_data()
+
     # Calculate fitness for each
     for portfolio in portfolios:
-        portfolio['fitness'] = calculate_fitness(portfolio)
+        portfolio['fitness'] = calculate_fitness(portfolio, prices)
 
     # Sort by fitness descending
     portfolios.sort(key=lambda p: p['fitness'], reverse=True)
@@ -244,6 +393,11 @@ if __name__ == '__main__':
     # Test evolution operators
     print("Testing evolution operators...")
 
+    # Load historical data
+    print("Loading historical data...")
+    prices = load_historical_data()
+    print(f"✅ Loaded {len(prices)} days of data for {len(prices.columns)} assets")
+
     # Load universe
     universe = load_asset_universe()
     print(f"✅ Loaded {len(universe)} assets from universe")
@@ -252,44 +406,59 @@ if __name__ == '__main__':
     parent1 = {
         'generation': 0,
         'agent_id': 'agent_1',
-        'expected_sharpe': 1.5,
         'assets': [
-            {'ticker': 'AAPL', 'weight': 0.3, 'reason': 'Tech leader'},
-            {'ticker': 'MSFT', 'weight': 0.3, 'reason': 'Cloud'},
-            {'ticker': 'GOOGL', 'weight': 0.2, 'reason': 'AI'},
-            {'ticker': 'SPY', 'weight': 0.2, 'reason': 'Market'}
+            {'ticker': 'SPY', 'weight': 0.25, 'reason': 'S&P 500'},
+            {'ticker': 'QQQ', 'weight': 0.20, 'reason': 'Tech'},
+            {'ticker': 'AGG', 'weight': 0.20, 'reason': 'Bonds'},
+            {'ticker': 'GLD', 'weight': 0.15, 'reason': 'Gold'},
+            {'ticker': 'VNQ', 'weight': 0.20, 'reason': 'Real Estate'}
         ]
     }
 
     parent2 = {
         'generation': 0,
         'agent_id': 'agent_2',
-        'expected_sharpe': 1.6,
         'assets': [
-            {'ticker': 'NVDA', 'weight': 0.35, 'reason': 'GPU'},
-            {'ticker': 'MSFT', 'weight': 0.25, 'reason': 'Azure'},
-            {'ticker': 'AGG', 'weight': 0.25, 'reason': 'Bonds'},
-            {'ticker': 'GLD', 'weight': 0.15, 'reason': 'Gold'}
+            {'ticker': 'AAPL', 'weight': 0.20, 'reason': 'Tech leader'},
+            {'ticker': 'MSFT', 'weight': 0.20, 'reason': 'Cloud'},
+            {'ticker': 'GOOGL', 'weight': 0.15, 'reason': 'AI'},
+            {'ticker': 'SPY', 'weight': 0.25, 'reason': 'Market'},
+            {'ticker': 'AGG', 'weight': 0.20, 'reason': 'Bonds'}
         ]
     }
 
-    # Test fitness
-    print(f"\nFitness parent1: {calculate_fitness(parent1)}")
-    print(f"Fitness parent2: {calculate_fitness(parent2)}")
+    # Test fitness with real metrics
+    print(f"\nCalculating fitness for parent1...")
+    fitness1 = calculate_fitness(parent1, prices)
+    print(f"✅ Fitness: {fitness1}")
+    if 'metrics' in parent1:
+        m = parent1['metrics']
+        print(f"   Sharpe: {m['sharpe']:.3f}, Sortino: {m['sortino']:.3f}, Calmar: {m['calmar']:.3f}")
+        print(f"   CAGR: {m['cagr']:.2%}, MaxDD: {m['max_drawdown']:.2%}, Vol: {m['volatility']:.2%}")
+
+    print(f"\nCalculating fitness for parent2...")
+    fitness2 = calculate_fitness(parent2, prices)
+    print(f"✅ Fitness: {fitness2}")
+    if 'metrics' in parent2:
+        m = parent2['metrics']
+        print(f"   Sharpe: {m['sharpe']:.3f}, Sortino: {m['sortino']:.3f}, Calmar: {m['calmar']:.3f}")
+        print(f"   CAGR: {m['cagr']:.2%}, MaxDD: {m['max_drawdown']:.2%}, Vol: {m['volatility']:.2%}")
 
     # Test crossover
     offspring = crossover(parent1, parent2)
     print(f"\n✅ Crossover created portfolio with {len(offspring['assets'])} assets")
-    print(f"   Fitness: {calculate_fitness(offspring)}")
+    offspring_fitness = calculate_fitness(offspring, prices)
+    print(f"   Fitness: {offspring_fitness}")
 
     # Test mutation
     mutated = mutate(offspring, universe, mutation_rate=0.2)
     print(f"\n✅ Mutation created portfolio with {len(mutated['assets'])} assets")
-    print(f"   Fitness: {calculate_fitness(mutated)}")
+    mutated_fitness = calculate_fitness(mutated, prices)
+    print(f"   Fitness: {mutated_fitness}")
 
     # Test selection
     all_portfolios = [parent1, parent2, offspring, mutated]
-    best = select_best(all_portfolios, k=2)
+    best = select_best(all_portfolios, k=2, prices=prices)
     print(f"\n✅ Selection picked top 2:")
     for i, p in enumerate(best, 1):
-        print(f"   {i}. {p.get('agent_id', p.get('portfolio_id'))}: {p['fitness']}")
+        print(f"   {i}. {p.get('agent_id', p.get('portfolio_id'))}: {p['fitness']:.4f}")

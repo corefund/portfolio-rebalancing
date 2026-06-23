@@ -38,3 +38,6 @@ universe.csv
 # OS
 .DS_Store
 Thumbs.db
+
+.env
+settings.json
