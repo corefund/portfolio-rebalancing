@@ -1,6 +1,6 @@
 {
-  "generation": 2,
-  "portfolio_id": "gen2_initial",
+  "generation": 3,
+  "portfolio_id": "gen3_initial",
   "assets": [
     {
       "ticker": "NVDA",
@@ -48,12 +48,12 @@
       "reason": "Defensive healthcare addition"
     }
   ],
-  "parent": "agent_3",
-  "parent_fitness": 1.5378,
   "parents": [
     "agent_3",
     "agent_1"
   ],
+  "parent_fitness": 1.5378,
+  "parent": "agent_3",
   "parent_fitness_scores": [
     1.5378,
     1.3175
