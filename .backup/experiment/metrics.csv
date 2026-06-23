@@ -1,0 +1,7 @@
+generation,agent,fitness,num_assets,max_weight,min_weight,expected_sharpe
+0,agent_1,1.65,8,0.2,0.08,1.65
+0,agent_2,1.42,8,0.25,0.07,1.42
+0,agent_3,1.28,8,0.22,0.05,1.28
+1,agent_1,1.72,8,0.2105,0.077,1.72
+1,agent_2,1.68,8,0.2,0.08,1.68
+1,agent_3,1.58,9,0.1961,0.05,1.58

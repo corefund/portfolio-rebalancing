@@ -1,0 +1,50 @@
+{
+  "generation": 1,
+  "portfolio_id": "agent_1_gen1",
+  "agent_name": "agent_1",
+  "assets": [
+    {
+      "ticker": "NVDA",
+      "weight": 0.2105,
+      "reason": "AI/GPU dominance"
+    },
+    {
+      "ticker": "MSFT",
+      "weight": 0.1579,
+      "reason": "Cloud and AI integration"
+    },
+    {
+      "ticker": "GOOGL",
+      "weight": 0.1305,
+      "reason": "Search + AI moat"
+    },
+    {
+      "ticker": "AAPL",
+      "weight": 0.077,
+      "reason": "Services growth"
+    },
+    {
+      "ticker": "BTC-USD",
+      "weight": 0.0916,
+      "reason": "Tech adoption proxy"
+    },
+    {
+      "ticker": "SPY",
+      "weight": 0.1524,
+      "reason": "Market exposure"
+    },
+    {
+      "ticker": "AGG",
+      "weight": 0.0861,
+      "reason": "Risk balance"
+    },
+    {
+      "ticker": "GLD",
+      "weight": 0.094,
+      "reason": "Inflation hedge"
+    }
+  ],
+  "total_weight": 0.9999999999999999,
+  "expected_sharpe": 1.72,
+  "explanation": "Increased weights in NVDA/MSFT (AI momentum), reduced bonds. Tech allocation now 59%. Higher expected returns with marginally higher volatility."
+}

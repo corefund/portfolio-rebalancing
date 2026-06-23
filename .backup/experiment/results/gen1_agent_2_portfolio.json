@@ -1,0 +1,50 @@
+{
+  "generation": 1,
+  "portfolio_id": "agent_2_gen1",
+  "agent_name": "agent_2",
+  "assets": [
+    {
+      "ticker": "NVDA",
+      "weight": 0.2,
+      "reason": "AI/GPU dominance"
+    },
+    {
+      "ticker": "MSFT",
+      "weight": 0.15,
+      "reason": "Cloud and AI integration"
+    },
+    {
+      "ticker": "GOOGL",
+      "weight": 0.12,
+      "reason": "Search + AI moat"
+    },
+    {
+      "ticker": "AAPL",
+      "weight": 0.1,
+      "reason": "Services growth"
+    },
+    {
+      "ticker": "BTC-USD",
+      "weight": 0.08,
+      "reason": "Reduced to make room for ETH"
+    },
+    {
+      "ticker": "SPY",
+      "weight": 0.15,
+      "reason": "Market exposure"
+    },
+    {
+      "ticker": "AGG",
+      "weight": 0.1,
+      "reason": "Risk balance"
+    },
+    {
+      "ticker": "ETH-USD",
+      "weight": 0.1,
+      "reason": "Crypto diversification beyond BTC"
+    }
+  ],
+  "total_weight": 0.9999999999999999,
+  "expected_sharpe": 1.68,
+  "explanation": "Replaced gold with Ethereum for higher growth potential. Dual crypto exposure (BTC+ETH) increases alternative asset allocation to 18%. More aggressive risk profile."
+}
