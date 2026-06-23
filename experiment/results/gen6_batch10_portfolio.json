@@ -1,0 +1,43 @@
+{
+  "generation": 0,
+  "portfolio_id": "gen5_test1",
+  "agent_id": "test_agent",
+  "assets": [
+    {
+      "ticker": "SPY",
+      "weight": 0.25,
+      "reason": "S&P 500 exposure"
+    },
+    {
+      "ticker": "QQQ",
+      "weight": 0.2,
+      "reason": "Tech sector growth"
+    },
+    {
+      "ticker": "AGG",
+      "weight": 0.2,
+      "reason": "Bond stability"
+    },
+    {
+      "ticker": "GLD",
+      "weight": 0.15,
+      "reason": "Gold hedge"
+    },
+    {
+      "ticker": "VNQ",
+      "weight": 0.2,
+      "reason": "Real estate diversification"
+    }
+  ],
+  "metrics": {
+    "sharpe": 3.420411971353527,
+    "sortino": 5.480986139889507,
+    "calmar": 8.459161765485753,
+    "cagr": 0.44737997167780774,
+    "total_return": 0.05889296422058332,
+    "volatility": 0.1099020535476108,
+    "max_drawdown": 0.04443824459822212,
+    "alpha": 0.37591029963058437,
+    "beta": 1.0
+  }
+}
