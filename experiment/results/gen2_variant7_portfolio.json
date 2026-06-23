@@ -1,0 +1,71 @@
+{
+  "generation": 2,
+  "portfolio_id": "gen2_initial",
+  "assets": [
+    {
+      "ticker": "SPY",
+      "weight": 0.1753,
+      "reason": "Blend: Blend from both parents"
+    },
+    {
+      "ticker": "NVDA",
+      "weight": 0.1467,
+      "reason": "Blend: AI/GPU dominance"
+    },
+    {
+      "ticker": "MSFT",
+      "weight": 0.1395,
+      "reason": "Blend: Blend from both parents"
+    },
+    {
+      "ticker": "AGG",
+      "weight": 0.1225,
+      "reason": "Blend: Blend from both parents"
+    },
+    {
+      "ticker": "BTC-USD",
+      "weight": 0.093,
+      "reason": "Blend: Blend from both parents"
+    },
+    {
+      "ticker": "GOOGL",
+      "weight": 0.0911,
+      "reason": "Blend: Search + AI moat"
+    },
+    {
+      "ticker": "GLD",
+      "weight": 0.0832,
+      "reason": "Blend: Blend from both parents"
+    },
+    {
+      "ticker": "AAPL",
+      "weight": 0.0587,
+      "reason": "Blend: Services growth"
+    },
+    {
+      "ticker": "JNJ",
+      "weight": 0.053,
+      "reason": "Blend: Defensive healthcare"
+    },
+    {
+      "ticker": "VTI",
+      "weight": 0.0197,
+      "reason": "Broad market"
+    },
+    {
+      "ticker": "BND",
+      "weight": 0.0172,
+      "reason": "Additional bonds"
+    }
+  ],
+  "parents": [
+    "unknown",
+    "unknown"
+  ],
+  "parent_fitness": 1.9181,
+  "parent": "gen1_initial",
+  "parent2": "agent_3_gen1",
+  "parent2_fitness": 1.5378,
+  "expected_sharpe": 1.66,
+  "explanation": "Evolved from gen1_initial and agent_3_gen1 via crossover and mutation"
+}
