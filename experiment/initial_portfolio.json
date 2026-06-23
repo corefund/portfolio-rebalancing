@@ -1,6 +1,6 @@
 {
-  "generation": 2,
-  "portfolio_id": "gen2_initial",
+  "generation": 4,
+  "portfolio_id": "gen4_initial",
   "assets": [
     {
       "ticker": "NVDA",
@@ -48,14 +48,26 @@
       "reason": "Defensive healthcare addition"
     }
   ],
-  "parent": "agent_3",
-  "parent_fitness": 1.5378,
   "parents": [
-    "agent_3",
-    "agent_1"
+    "gen1_agent_3_portfolio",
+    "gen1_agent_1_portfolio"
   ],
+  "parent_fitness": 1.5378,
+  "parent": "gen1_agent_3_portfolio",
   "parent_fitness_scores": [
     1.5378,
     1.3175
-  ]
+  ],
+  "metrics": {
+    "sharpe": 1.4361166798714526,
+    "sortino": 2.298308699835102,
+    "calmar": 3.1463944453094763,
+    "cagr": 0.34343915367289846,
+    "total_return": 0.046750705126025416,
+    "volatility": 0.22246252949408804,
+    "max_drawdown": 0.10153912829623969,
+    "alpha": 0.31948214925285484,
+    "beta": 1.0
+  },
+  "fitness": 1.424
 }
