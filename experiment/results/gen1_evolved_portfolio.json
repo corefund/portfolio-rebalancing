@@ -1,0 +1,67 @@
+{
+  "generation": 1,
+  "portfolio_id": "gen1_initial",
+  "assets": [
+    {
+      "ticker": "SPY",
+      "weight": 0.2054,
+      "reason": "Blend from both parents"
+    },
+    {
+      "ticker": "AGG",
+      "weight": 0.1485,
+      "reason": "Blend from both parents"
+    },
+    {
+      "ticker": "MSFT",
+      "weight": 0.1336,
+      "reason": "Blend from both parents"
+    },
+    {
+      "ticker": "NVDA",
+      "weight": 0.099,
+      "reason": "AI/GPU dominance"
+    },
+    {
+      "ticker": "GLD",
+      "weight": 0.0891,
+      "reason": "Blend from both parents"
+    },
+    {
+      "ticker": "BTC-USD",
+      "weight": 0.0891,
+      "reason": "Blend from both parents"
+    },
+    {
+      "ticker": "GOOGL",
+      "weight": 0.0621,
+      "reason": "Search + AI moat"
+    },
+    {
+      "ticker": "JNJ",
+      "weight": 0.0495,
+      "reason": "Defensive healthcare"
+    },
+    {
+      "ticker": "AAPL",
+      "weight": 0.0495,
+      "reason": "Services growth"
+    },
+    {
+      "ticker": "VTI",
+      "weight": 0.0396,
+      "reason": "Broad market"
+    },
+    {
+      "ticker": "BND",
+      "weight": 0.0346,
+      "reason": "Additional bonds"
+    }
+  ],
+  "parent": "agent_1",
+  "parent_fitness": 1.65,
+  "parent2": "agent_2",
+  "parent2_fitness": 1.42,
+  "expected_sharpe": 1.61,
+  "explanation": "Evolved from agent_1 and agent_2 via crossover and mutation"
+}
