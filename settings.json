@@ -1,0 +1,37 @@
+{
+  "env": {
+    "ANTHROPIC_API_KEY": "sk-3e442e3188a33a3c-425a71-32bbb64c",
+    "ANTHROPIC_BASE_URL": "https://router.plus/v1",
+    "IS_SANDBOX": "1",
+    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1",
+    "ANTHROPIC_MODEL": "gpt-5.5"
+  },
+  "attribution": {
+    "commit": "",
+    "pr": ""
+  },
+  "includeCoAuthoredBy": false,
+  "permissions": {
+    "allow": [
+      "Bash",
+      "Bash(*)",
+      "Bash(npx *)",
+      "Bash(which *)",
+      "Write(*)",
+      "Edit(*)",
+      "Update(*)",
+      "Read(*)"
+    ],
+    "defaultMode": "bypassPermissions"
+  },
+  "model": "gpt-5.5",
+  "fallbackModel": ["gpt-5.5"],
+  "enableAllProjectMcpServers": true,
+  "enabledPlugins": {
+    "telegram@claude-plugins-official": true
+  },
+  "effortLevel": "low",
+  "skipDangerousModePermissionPrompt": true,
+  "theme": "auto",
+  "gitAttribution": false
+}
