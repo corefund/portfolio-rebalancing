@@ -3,47 +3,65 @@
   "portfolio_id": "gen1_initial",
   "assets": [
     {
-      "ticker": "NVDA",
-      "weight": 0.2,
-      "reason": "AI/GPU dominance"
-    },
-    {
-      "ticker": "MSFT",
-      "weight": 0.15,
-      "reason": "Cloud and AI integration"
-    },
-    {
-      "ticker": "GOOGL",
-      "weight": 0.12,
-      "reason": "Search + AI moat"
-    },
-    {
-      "ticker": "AAPL",
-      "weight": 0.1,
-      "reason": "Services growth"
-    },
-    {
-      "ticker": "BTC-USD",
-      "weight": 0.1,
-      "reason": "Tech adoption proxy"
-    },
-    {
       "ticker": "SPY",
-      "weight": 0.15,
-      "reason": "Market exposure"
+      "weight": 0.1999,
+      "reason": "Blend from both parents"
     },
     {
       "ticker": "AGG",
-      "weight": 0.1,
-      "reason": "Risk balance"
+      "weight": 0.1499,
+      "reason": "Blend from both parents"
+    },
+    {
+      "ticker": "MSFT",
+      "weight": 0.1356,
+      "reason": "Blend from both parents"
+    },
+    {
+      "ticker": "NVDA",
+      "weight": 0.0999,
+      "reason": "AI/GPU dominance"
+    },
+    {
+      "ticker": "BTC-USD",
+      "weight": 0.0899,
+      "reason": "Blend from both parents"
     },
     {
       "ticker": "GLD",
-      "weight": 0.08,
-      "reason": "Inflation hedge"
+      "weight": 0.0899,
+      "reason": "Blend from both parents"
+    },
+    {
+      "ticker": "GOOGL",
+      "weight": 0.06,
+      "reason": "Search + AI moat"
+    },
+    {
+      "ticker": "JNJ",
+      "weight": 0.05,
+      "reason": "Defensive healthcare"
+    },
+    {
+      "ticker": "AAPL",
+      "weight": 0.05,
+      "reason": "Services growth"
+    },
+    {
+      "ticker": "VTI",
+      "weight": 0.04,
+      "reason": "Broad market"
+    },
+    {
+      "ticker": "BND",
+      "weight": 0.035,
+      "reason": "Additional bonds"
     }
   ],
-  "total_weight": 0.9999999999999999,
-  "parent": "agent_1_gen0",
-  "parent_fitness": 1.65
+  "parent": "agent_1",
+  "parent_fitness": 1.65,
+  "parent2": "agent_2",
+  "parent2_fitness": 1.42,
+  "expected_sharpe": 1.61,
+  "explanation": "Evolved from agent_1 and agent_2 via crossover and mutation"
 }
