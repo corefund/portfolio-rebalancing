@@ -1,0 +1,16 @@
+{
+  "generation": 0,
+  "portfolio_id": "test_gen0",
+  "agent_name": "test_agent",
+  "assets": [
+    {"ticker": "SPY", "weight": 0.20, "reason": "US stocks"},
+    {"ticker": "QQQ", "weight": 0.15, "reason": "Tech"},
+    {"ticker": "AGG", "weight": 0.15, "reason": "Bonds"},
+    {"ticker": "GLD", "weight": 0.12, "reason": "Gold"},
+    {"ticker": "VNQ", "weight": 0.10, "reason": "Real estate"},
+    {"ticker": "EFA", "weight": 0.10, "reason": "International"},
+    {"ticker": "TLT", "weight": 0.10, "reason": "Long bonds"},
+    {"ticker": "DBC", "weight": 0.08, "reason": "Commodities"}
+  ],
+  "explanation": "Test portfolio to trigger validation workflow"
+}
