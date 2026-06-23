@@ -1,67 +1,61 @@
 {
-  "generation": 1,
-  "portfolio_id": "gen1_initial",
+  "generation": 2,
+  "portfolio_id": "gen2_initial",
   "assets": [
     {
-      "ticker": "SPY",
-      "weight": 0.1999,
-      "reason": "Blend from both parents"
-    },
-    {
-      "ticker": "AGG",
-      "weight": 0.1499,
-      "reason": "Blend from both parents"
+      "ticker": "NVDA",
+      "weight": 0.2032,
+      "reason": "Blend: AI/GPU dominance"
     },
     {
       "ticker": "MSFT",
-      "weight": 0.1356,
-      "reason": "Blend from both parents"
+      "weight": 0.1524,
+      "reason": "Blend: Cloud and AI integration"
     },
     {
-      "ticker": "NVDA",
-      "weight": 0.0999,
-      "reason": "AI/GPU dominance"
-    },
-    {
-      "ticker": "BTC-USD",
-      "weight": 0.0899,
-      "reason": "Blend from both parents"
-    },
-    {
-      "ticker": "GLD",
-      "weight": 0.0899,
-      "reason": "Blend from both parents"
+      "ticker": "SPY",
+      "weight": 0.1497,
+      "reason": "Blend: Market exposure"
     },
     {
       "ticker": "GOOGL",
-      "weight": 0.06,
-      "reason": "Search + AI moat"
+      "weight": 0.124,
+      "reason": "Blend: Search + AI moat"
     },
     {
-      "ticker": "JNJ",
-      "weight": 0.05,
-      "reason": "Defensive healthcare"
+      "ticker": "BTC-USD",
+      "weight": 0.0948,
+      "reason": "Blend: Tech adoption proxy"
+    },
+    {
+      "ticker": "AGG",
+      "weight": 0.092,
+      "reason": "Blend: Risk balance"
+    },
+    {
+      "ticker": "GLD",
+      "weight": 0.0862,
+      "reason": "Blend: Inflation hedge"
     },
     {
       "ticker": "AAPL",
-      "weight": 0.05,
-      "reason": "Services growth"
+      "weight": 0.0728,
+      "reason": "Blend: Reduced for rebalance"
     },
     {
-      "ticker": "VTI",
-      "weight": 0.04,
-      "reason": "Broad market"
-    },
-    {
-      "ticker": "BND",
-      "weight": 0.035,
-      "reason": "Additional bonds"
+      "ticker": "JNJ",
+      "weight": 0.025,
+      "reason": "Defensive healthcare addition"
     }
   ],
-  "parent": "agent_1",
-  "parent_fitness": 1.65,
-  "parent2": "agent_2",
-  "parent2_fitness": 1.42,
-  "expected_sharpe": 1.61,
-  "explanation": "Evolved from agent_1 and agent_2 via crossover and mutation"
+  "parent": "agent_3",
+  "parent_fitness": 1.5378,
+  "parents": [
+    "agent_3",
+    "agent_1"
+  ],
+  "parent_fitness_scores": [
+    1.5378,
+    1.3175
+  ]
 }
